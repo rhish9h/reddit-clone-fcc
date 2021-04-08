@@ -5,10 +5,17 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.psl.dto.AuthenticationResponse;
+import com.psl.dto.LoginRequest;
 import com.psl.dto.RegisterRequest;
 import com.psl.exception.SpringRedditException;
 import com.psl.model.NotificationEmail;
@@ -16,6 +23,7 @@ import com.psl.model.User;
 import com.psl.model.VerificationToken;
 import com.psl.repository.UserRepository;
 import com.psl.repository.VerificationTokenRepository;
+import com.psl.security.JwtProvider;
 
 import lombok.AllArgsConstructor;
 
@@ -28,6 +36,8 @@ public class AuthService {
 	private final UserRepository userRepository;
 	private final VerificationTokenRepository verificationTokenRepository;
 	private final MailService mailService;
+	private final AuthenticationManager authenticationManager;
+	private final JwtProvider jwtProvider;
 	
 	public void signup(RegisterRequest registerRequest) {
 		User user = new User();
@@ -64,17 +74,22 @@ public class AuthService {
 	}
 
 	private void fetchUserAndEnable(VerificationToken verificationToken) {
-		System.out.println("user from token - " + verificationToken.getUser());
-		
+//		System.out.println("user from token - " + verificationToken.getUser());
 		String username = verificationToken.getUser().getUsername();
 		User user = userRepository.findByUsername(username).orElseThrow(() -> new SpringRedditException("User not found with name - " + username));
-		
-		System.out.println("user from db - " + user);
-		
+//		System.out.println("user from db - " + user);
 		user.setEnabled(true);
-		
-		System.out.println("user later - " + user);
-		
+//		System.out.println("user later - " + user);
 		userRepository.save(user);
+	}
+
+	public AuthenticationResponse login(LoginRequest loginRequest) {
+		Authentication authenticate = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getUsername(),
+				loginRequest.getPassword()));
+		
+		SecurityContextHolder.getContext().setAuthentication(authenticate);
+        String token = jwtProvider.generateToken(authenticate);
+		
+        return new AuthenticationResponse(token, loginRequest.getUsername());
 	}
 }
