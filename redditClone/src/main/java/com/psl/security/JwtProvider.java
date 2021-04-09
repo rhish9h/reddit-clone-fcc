@@ -15,8 +15,10 @@ import com.psl.exception.SpringRedditException;
 import java.security.*;
 import java.security.cert.CertificateException;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import static java.util.Date.from;
+import static io.jsonwebtoken.Jwts.parser;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -59,4 +61,28 @@ public class JwtProvider {
             throw new SpringRedditException("Exception occured while retrieving public key from keystore", e);
         }
 	}
+
+	public boolean validateToken(String jwt) {
+		parser().setSigningKey(getPublicKey()).parseClaimsJws(jwt);
+		return true;
+	}
+
+	public String getUsernameFromJwt(String jwt) {
+		Claims claims = parser()
+				.setSigningKey(getPublicKey())
+				.parseClaimsJws(jwt)
+				.getBody();
+		
+		return claims.getSubject();
+	}
+
+	private PublicKey getPublicKey() {
+		try { 
+			return keyStore.getCertificate("springblog").getPublicKey();
+		} catch (KeyStoreException e) {
+			throw new SpringRedditException("Exception occured while retrieving public key from keystore", e);
+		}
+	}
+	
+	
 }
