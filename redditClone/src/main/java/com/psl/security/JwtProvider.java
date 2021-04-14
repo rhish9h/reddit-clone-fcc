@@ -84,5 +84,17 @@ public class JwtProvider {
 		}
 	}
 	
+	public Long getJwtExpirationInMillis() {
+		return jwtExpirationInMillis;
+	}
+
+	public String generateTokenWithUserName(String username) {
+		return Jwts.builder()
+				.setSubject(username)
+				.setIssuedAt(from(Instant.now()))
+				.signWith(getPrivateKey())
+				.setExpiration(Date.from(Instant.now().plusMillis(jwtExpirationInMillis)))
+				.compact();
+	}
 	
 }

@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
+import javax.validation.Valid;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.psl.dto.AuthenticationResponse;
 import com.psl.dto.LoginRequest;
+import com.psl.dto.RefreshTokenRequest;
 import com.psl.dto.RegisterRequest;
 import com.psl.exception.SpringRedditException;
 import com.psl.model.NotificationEmail;
@@ -40,6 +43,7 @@ public class AuthService {
 	private final MailService mailService;
 	private final AuthenticationManager authenticationManager;
 	private final JwtProvider jwtProvider;
+	private final RefreshTokenService refreshTokenService;
 	
 	public void signup(RegisterRequest registerRequest) {
 		User user = new User();
@@ -92,7 +96,12 @@ public class AuthService {
 		SecurityContextHolder.getContext().setAuthentication(authenticate);
         String token = jwtProvider.generateToken(authenticate);
 		
-        return new AuthenticationResponse(token, loginRequest.getUsername());
+        return AuthenticationResponse.builder()
+        		.authenticationToken(token)
+        		.refreshToken(refreshTokenService.generateRefreshToken().getToken())
+        		.expiresAt(Instant.now().plusMillis(jwtProvider.getJwtExpirationInMillis()))
+        		.username(loginRequest.getUsername())
+        		.build();
 	}
 	
 	public boolean isLoggedIn() {
@@ -107,5 +116,17 @@ public class AuthService {
 		
 		return userRepository.findByUsername(principal.getUsername())
 				.orElseThrow(() -> new UsernameNotFoundException("User name not found - " + principal.getUsername()));
+	}
+
+	public AuthenticationResponse refreshToken(@Valid RefreshTokenRequest refreshTokenRequest) {
+		refreshTokenService.validateRefreshToken(refreshTokenRequest.getRefreshToken());
+		String token = jwtProvider.generateTokenWithUserName(refreshTokenRequest.getUsername());
+		
+		return AuthenticationResponse.builder()
+				.authenticationToken(token)
+				.refreshToken(refreshTokenRequest.getRefreshToken())
+				.expiresAt(Instant.now().plusMillis(jwtProvider.getJwtExpirationInMillis()))
+				.username(refreshTokenRequest.getUsername())
+				.build();
 	}
 }
