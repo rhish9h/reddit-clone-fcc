@@ -8,6 +8,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.github.marlonlom.utilities.timeago.TimeAgo;
 import com.psl.dto.PostRequest;
 import com.psl.dto.PostResponse;
 import com.psl.model.Post;
@@ -55,7 +56,7 @@ public abstract class PostMapper {
 	}
 	
 	String getDuration(Post post) {
-		return String.valueOf(Duration.between(post.getCreatedDate(), Instant.now()).toMillis());
+		return TimeAgo.using(post.getCreatedDate().toEpochMilli());
 	}
 	
 	boolean isPostUpVoted(Post post) {
